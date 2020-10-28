@@ -28,7 +28,11 @@ ReplicationResponse ServerPFAStub::SendReplicationRequest(ReplicationRequest &re
         size = response.Size();
         if(socket.Recv(buffer,size,0)) {
             response.Unmarshal(buffer);
+        } else {
+            response.SetStatus(0);
         }
+    } else {
+        response.SetStatus(0);
     }
     return response;
 }

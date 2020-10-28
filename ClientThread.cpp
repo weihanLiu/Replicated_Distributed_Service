@@ -11,10 +11,13 @@ void ClientThreadClass::ThreadBody(std::string ip, int port, int id, int orders,
 	num_orders = orders;
 	request_type = type;
 	if (!stub.Init(std::move(ip), port)) {
-		std::cout << "Thread " << customer_id << " failed to connect" << std::endl;
+		//std::cout << "Thread " << customer_id << " failed to connect" << std::endl;
 		return;
 	}
-	stub.SendIdentifyAsCustomer();
+	if(!stub.SendIdentifyAsCustomer()) {
+        //std::cout << "Thread " << customer_id << " failed to send identify message." << std::endl;
+        return;
+	}
     CustomerRequest request;
     CustomerRecord record;
 	switch(request_type) {
@@ -26,11 +29,10 @@ void ClientThreadClass::ThreadBody(std::string ip, int port, int id, int orders,
                 timer.Start();
                 robot = stub.Order(request);
                 timer.EndAndMerge();
-                robot.Print();
 
                 if (!robot.IsValid()) {
-                    std::cout << "Invalid robot " << customer_id << std::endl;
-                    break;
+                    //std::cout << "Fail to send request or receive from server, id: " << customer_id << std::endl;
+                    return;
                 }
             }
             break;
@@ -39,8 +41,11 @@ void ClientThreadClass::ThreadBody(std::string ip, int port, int id, int orders,
 
 	        timer.Start();
 	        record = stub.ReadRecord(request);
+	        if(record.GetCustomerId() == -2 && record.GetLastOrder() == -2) {
+                //std::cout << "Fail to send request or received from server" << std::endl;
+                return;
+	        }
 	        timer.EndAndMerge();
-	        record.Print();
 	        break;
 	    case 3:
 	        for (int i = 0; i <= num_orders; i++) {
@@ -48,6 +53,10 @@ void ClientThreadClass::ThreadBody(std::string ip, int port, int id, int orders,
 
 	            timer.Start();
 	            record = stub.ReadRecord(request);
+                if(record.GetCustomerId() == -2 && record.GetLastOrder() == -2) {
+                    //std::cout << "Fail to send request or received from server" << std::endl;
+                    return;
+                }
 	            timer.EndAndMerge();
 
 	            if (record.GetCustomerId() != -1) {

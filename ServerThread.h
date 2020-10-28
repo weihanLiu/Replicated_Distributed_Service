@@ -20,6 +20,7 @@ struct ServerNode {
     std::string ip;
     int port;
     ServerPFAStub* stub;
+    bool isActive;
 };
 
 struct AdminRequest {

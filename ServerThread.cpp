@@ -175,22 +175,26 @@ void RobotFactory::BecomePrimaryNode() {
     for(ServerNode &node : peers) {
         std::cout << "current node is: " << &node << std::endl;
         node.stub = new ServerPFAStub();
-        node.stub->Init(node.ip, node.port);
-        node.stub->SendIdentifyAsPFA(); //Send by PFAStub which use client socket
+        int a1 = node.stub->Init(node.ip, node.port);
+        int a2 = node.stub->SendIdentifyAsPFA(); //Send by PFAStub which use client socket
+        node.isActive = (a1 && a2);
     }
 }
 
 void RobotFactory::SendReplicationRequests() {
     for(ServerNode &node : peers) {
-        ReplicationRequest request;
-        ReplicationResponse response;
-        request.SetRequest(primary_id,committed_index,last_index, smr_log[last_index]);
-        std::cout << " Request to be sent: " << std::endl;
-        request.Print();
-        response = node.stub->SendReplicationRequest(request);
-        std::cout << " Response status: "  << response.GetStatus() << std::endl;
+        if(node.isActive) {
+            ReplicationRequest request;
+            ReplicationResponse response;
+            request.SetRequest(primary_id,committed_index,last_index, smr_log[last_index]);
+            std::cout << " Request to be sent: " << std::endl;
+            request.Print();
+            response = node.stub->SendReplicationRequest(request);
+            if(!response.GetStatus()) {
+                node.isActive = false;
+            }
+        }
     }
-    std::cout << "Send replication request completed "  << std::endl;
 }
 
 

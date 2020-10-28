@@ -125,6 +125,7 @@ public:
     void SetLastOrder(int lastOrder);
 
     void Print() const;
+    bool IsValid();
 };
 
 #endif // #ifndef __MESSAGES_H__
