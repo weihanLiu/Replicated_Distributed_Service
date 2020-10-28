@@ -44,7 +44,6 @@ ReplicationRequest ServerStub::ReceiveReplicationRequest() {
     if(temp) {
         request.Unmarshal(buffer);
         std::cout << "Replication received: "  << std::endl;
-        request.Print();
     }
     return request;
 }

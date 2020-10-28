@@ -19,7 +19,7 @@ struct ServerNode {
     int id;
     std::string ip;
     int port;
-    ServerPFAStub stub;
+    ServerPFAStub* stub;
 };
 
 struct AdminRequest {
@@ -33,7 +33,6 @@ private:
     int factory_id;
     int last_index;
     int committed_index;
-    bool isPFAActive;
     std::vector<ServerNode> peers;
 
 	std::queue<std::unique_ptr<AdminRequest>> arq;

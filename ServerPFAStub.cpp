@@ -22,10 +22,8 @@ int ServerPFAStub::Init(std::string ip, int port) {
 ReplicationResponse ServerPFAStub::SendReplicationRequest(ReplicationRequest &request) {
     ReplicationResponse response;
     char buffer[32];
-    ReplicationRequest request1;
-    request1.SetRequest(0,-1,0,MapOp({1,1,1}));
-    request1.Marshal(buffer);
-    int size = request1.Size();
+    request.Marshal(buffer);
+    int size = request.Size();
     if(socket.Send(buffer, size,0)) {
         size = response.Size();
         if(socket.Recv(buffer,size,0)) {

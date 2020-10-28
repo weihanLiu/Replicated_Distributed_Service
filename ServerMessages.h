@@ -35,7 +35,7 @@ public:
         arg1 = request.arg1;
         arg2 = request.arg2;
     }
-    void SetRequest(int priId, int comIdx, int lastIdx, MapOp op);
+    void SetRequest(int priId, int comIdx, int lastIdx, MapOp &op);
 
     void Marshal(char *buffer);
     void Unmarshal(char *buffer);

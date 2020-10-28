@@ -9,7 +9,6 @@ void RobotFactory::Init(int id, std::vector<ServerNode> peersList) {
     last_index = -1;
     committed_index = -1;
     peers = std::move(peersList);
-    isPFAActive = false;
 }
 
 RobotInfo RobotFactory::CreateRegularRobot(CustomerRequest order, int engineer_id) {
@@ -73,15 +72,18 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
         if(primary_id != req_priId) {
             primary_id = req_priId;
         }
-
-        smr_log[req_lastIdx] = req_op;
+        smr_log.push_back( req_op);
         last_index = req_lastIdx;
-        if(req_comIdx != -1) {
+        std::cout << "smr_log[req_lastIdx] = "  << smr_log[last_index].opcode << ", " << smr_log[last_index].arg1 << ", " << smr_log[last_index].arg2 << std::endl;
+
+        if(req_comIdx != -1 && committed_index != req_comIdx) {
             std::unique_lock<std::mutex> mlock(map_lock);
-            committed_index = req_comIdx;
-            int cusId = smr_log[committed_index].arg1;
-            int ordNum = smr_log[committed_index].arg2;
-            customer_record[cusId] = ordNum;
+            while(committed_index < req_comIdx) {
+                committed_index++;
+                int cusId = smr_log[committed_index].arg1;
+                int ordNum = smr_log[committed_index].arg2;
+                customer_record[cusId] = ordNum;
+            }
             mlock.unlock();
         }
         response.SetStatus(1);
@@ -134,9 +136,11 @@ void RobotFactory::AdminThread(int id) {
 
 		int cusId = adminReq->robot.GetCustomerId();
 		int ordNum = adminReq->robot.GetOrderNumber();
+		std::cout <<"cusID: " << cusId << " , ordNum: " << ordNum << std::endl;
 		//change smr_log
 		smr_log.push_back({1, cusId, ordNum});
 		last_index++;
+        std::cout << "last Log after smr pushBack: "  <<  smr_log[last_index].opcode << ", " << smr_log[last_index].arg1 << ", " << smr_log[last_index].arg2 << std::endl;
 		SendReplicationRequests();
 		std::unique_lock<std::mutex> mlock(map_lock);
 		//change customer_record
@@ -160,21 +164,33 @@ CustomerRecord RobotFactory::GetCustomerRecord(int id) {
 }
 
 void RobotFactory::BecomePrimaryNode() {
+    if(primary_id != -1) {
+        //committe the xth record in the log and change committed_index to x.
+        MapOp xthOpLog = smr_log[++committed_index];
+        std::unique_lock<std::mutex> mlock(map_lock);
+        customer_record[xthOpLog.arg1] = xthOpLog.arg2;
+        mlock.unlock();
+    }
     primary_id = factory_id;
-    for(ServerNode node : peers) {
-        int temp = node.stub.Init(node.ip, node.port);
-        std::cout << "stub to peer: "  << temp << std::endl;
-        node.stub.SendIdentifyAsPFA(); //Send by client socket
+    for(ServerNode &node : peers) {
+        std::cout << "current node is: " << &node << std::endl;
+        node.stub = new ServerPFAStub();
+        node.stub->Init(node.ip, node.port);
+        node.stub->SendIdentifyAsPFA(); //Send by PFAStub which use client socket
     }
 }
 
 void RobotFactory::SendReplicationRequests() {
-    for(ServerNode node : peers) {
+    for(ServerNode &node : peers) {
         ReplicationRequest request;
         ReplicationResponse response;
         request.SetRequest(primary_id,committed_index,last_index, smr_log[last_index]);
-        response = node.stub.SendReplicationRequest(request);
+        std::cout << " Request to be sent: " << std::endl;
+        request.Print();
+        response = node.stub->SendReplicationRequest(request);
+        std::cout << " Response status: "  << response.GetStatus() << std::endl;
     }
+    std::cout << "Send replication request completed "  << std::endl;
 }
 
 

@@ -38,13 +38,14 @@ MapOp ReplicationRequest::getLastOp() {
     return MapOp({opcode,arg1,arg2});
 }
 
-void ReplicationRequest::SetRequest(int priId, int comIdx, int lastIdx, MapOp op) {
+void ReplicationRequest::SetRequest(int priId, int comIdx, int lastIdx, MapOp &op) {
     primary_id = priId;
     committed_index = comIdx;
     last_index = lastIdx;
     opcode = op.opcode;
     arg1 = op.arg1;
     arg2 = op.arg2;
+    std::cout << "mapOp in setRequest = "  << opcode << ", " << arg1 << ", " << arg2 << std::endl;
 }
 
 int ReplicationRequest::Size() {
