@@ -61,7 +61,7 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
         //request.Print();
 
         if(!request.isValid()) {
-            std::cout << "Invalid request: primary server is down "  << std::endl;
+            //std::cout << "Invalid request: primary server is down "  << std::endl;
             primary_id = -1;
             //stub.CloseSocket();
             break;
@@ -75,8 +75,6 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
         }
 
         std::unique_lock<std::mutex> mlock(map_lock);
-        bool temp = req_lastIdx <= last_index;
-        std::cout << temp << std::endl;
         // if this server is ahead of primary, rollback to the same status of primary.
         if(req_lastIdx < (int)smr_log.size()) {
             smr_log[req_lastIdx] = req_op;
@@ -198,7 +196,7 @@ void RobotFactory::SendReplicationRequests() {
     for(ServerNode &node : peers) {
         if(!node.isActive) {
             RecoverNode(node);
-            std::cout << "recoveryResult: " << node.isActive << std::endl;
+            //std::cout << "recoveryResult: " << node.isActive << std::endl;
         }
         if(node.isActive) {
             SendSingleReplicationReq(primary_id,committed_index,last_index,smr_log[last_index],node);
@@ -214,7 +212,7 @@ void RobotFactory::SendSingleReplicationReq(int priId, int comIdx, int lastIdx, 
     //request.Print();
     response = node.stub->SendReplicationRequest(request);
     if(!response.GetStatus()) {
-        std::cout << " a node is down " << std::endl;
+        //std::cout << " a node is down " << std::endl;
         node.isActive = false;
         node.stub->Close();
     }
@@ -228,7 +226,7 @@ void RobotFactory::RecoverNode(ServerNode &node) {
         return;
     }
     node.isActive = true;
-    std::cout << " node is back, start recovery " << std::endl;
+    //std::cout << " node is back, start recovery " << std::endl;
     int temp = 0;
     while(temp <= last_index) {
         if(!node.isActive) {

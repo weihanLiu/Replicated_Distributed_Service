@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     //std::cout << "Main Socket created." << std::endl;
 
 	while ((new_socket = socket.Accept())) {
-        std::cout << "New Socket accepted " << &new_socket << std::endl;
+        //std::cout << "New Socket accepted " << &new_socket << std::endl;
 		std::thread engineer_thread(&RobotFactory::EngineerThread, &factory, 
 				std::move(new_socket), engineer_cnt++);
 		thread_vector.push_back(std::move(engineer_thread));

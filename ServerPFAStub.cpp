@@ -24,7 +24,7 @@ int ServerPFAStub::Init(std::string ip, int port) {
     if(temp == 0) {
         socket.Close();
     }
-    std::cout << " Inside sockect init: " << temp << std::endl;
+    //std::cout << " Inside sockect init: " << temp << std::endl;
     return temp;
 }
 
