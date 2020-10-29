@@ -38,18 +38,16 @@ void ClientThreadClass::ThreadBody(std::string ip, int port, int id, int orders,
             }
             break;
 	    case 2:
-	        request.SetRequest(customer_id, -1, request_type);
-
-	        timer.Start();
-	        record = stub.ReadRecord(request);
-	        if(record.GetCustomerId() == -2 && record.GetLastOrder() == -2) {
-                //std::cout << "Fail to send request or received from server" << std::endl;
-                return;
+	        for (int i = 0; i <= num_orders; i++) {
+                request.SetRequest(customer_id, -1, request_type);
+                timer.Start();
+                record = stub.ReadRecord(request);
+                if(record.GetCustomerId() == -2 && record.GetLastOrder() == -2) {
+                    //std::cout << "Fail to send request or received from server" << std::endl;
+                    return;
+                }
+                timer.EndAndMerge();
 	        }
-            if (record.GetCustomerId() != -1) {
-                record.Print();
-            }
-	        timer.EndAndMerge();
 	        break;
 	    case 3:
 	        for (int i = 0; i <= num_orders; i++) {

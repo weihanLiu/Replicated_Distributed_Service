@@ -27,15 +27,12 @@ CustomerRecord ClientStub::ReadRecord(CustomerRequest request) {
     int size;
     request.Marshal(buffer);
     size = request.Size();
+    record.SetRecord(-2, -2);
     if (socket.Send(buffer, size, 0)) {
         size = record.Size();
         if (socket.Recv(buffer, size, 0)) {
             record.Unmarshal(buffer);
-        } else {
-            record.SetRecord(-2, -2);
         }
-    } else {
-        record.SetRecord(-2, -2);
     }
     return record;
 }
