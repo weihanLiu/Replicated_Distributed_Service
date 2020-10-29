@@ -46,6 +46,9 @@ void ClientThreadClass::ThreadBody(std::string ip, int port, int id, int orders,
                 //std::cout << "Fail to send request or received from server" << std::endl;
                 return;
 	        }
+            if (record.GetCustomerId() != -1) {
+                record.Print();
+            }
 	        timer.EndAndMerge();
 	        break;
 	    case 3:

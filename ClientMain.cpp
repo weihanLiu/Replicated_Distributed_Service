@@ -33,11 +33,6 @@ int main(int argc, char *argv[]) {
 	num_customers = atoi(argv[3]);
 	num_orders = atoi(argv[4]);
 	request_type = atoi(argv[5]);
-//    ip = "127.0.0.1";
-//    port = 12345;
-//    num_customers = 5;
-//    num_orders = 5;
-//    request_type = 1;
 
 
 
