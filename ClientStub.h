@@ -15,7 +15,7 @@ public:
 	RobotInfo Order(CustomerRequest request);
     CustomerRecord ReadRecord(CustomerRequest request);
     int SendIdentifyAsCustomer();
-
+    void CloseSocket();
 };
 
 

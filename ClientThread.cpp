@@ -15,6 +15,7 @@ void ClientThreadClass::ThreadBody(std::string ip, int port, int id, int orders,
 		return;
 	}
 	if(!stub.SendIdentifyAsCustomer()) {
+	    stub.CloseSocket();
         //std::cout << "Thread " << customer_id << " failed to send identify message." << std::endl;
         return;
 	}
@@ -67,6 +68,7 @@ void ClientThreadClass::ThreadBody(std::string ip, int port, int id, int orders,
 	    default:
 	        std::cout<< "Invalid request type: " << request_type <<std::endl;
 	}
+	stub.CloseSocket();
 }
 
 ClientTimer ClientThreadClass::GetTimer() {

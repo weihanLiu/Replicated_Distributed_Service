@@ -48,3 +48,7 @@ int ClientStub::SendIdentifyAsCustomer() {
     return socket.Send(buffer, message.Size(), 0);
 }
 
+void ClientStub::CloseSocket() {
+    socket.Close();
+}
+

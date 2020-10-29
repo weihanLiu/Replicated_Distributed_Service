@@ -33,6 +33,7 @@ RobotInfo RobotFactory::CreateRegularRobot(CustomerRequest order, int engineer_i
 }
 
 void RobotFactory::EngineerThread(std::unique_ptr<ServerSocket> socket, int id) {
+    std::cout << "inside engineer thread" << std::endl;
 	int engineer_id = id;
     ServerStub stub;
 	stub.Init(std::move(socket));
@@ -49,6 +50,8 @@ void RobotFactory::EngineerThread(std::unique_ptr<ServerSocket> socket, int id) 
         default:
             std::cout << "Undefined identification message tyep: " << identificationMessage.GetType() << std::endl;
     }
+    std::cout << "out of engineer thread "  << std::endl;
+
 }
 
 void RobotFactory::processReplicationRequest(ServerStub &stub) {
@@ -60,34 +63,44 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
         request.Print();
 
         if(!request.isValid()) {
-            std::cout << "Invalid request: "  << std::endl;
-            response.SetStatus(0);
-            stub.SendReplicationResponse(response);
+            std::cout << "Invalid request: primary server is down "  << std::endl;
+            primary_id = -1;
+            //stub.CloseSocket();
             break;
         }
         int req_priId = request.getPrimaryId();
         int req_comIdx = request.getCommittedIndex();
         int req_lastIdx = request.getLastIndex();
         MapOp req_op = request.getLastOp();
+        std::cout << "A" << &stub << std::endl;
         if(primary_id != req_priId) {
             primary_id = req_priId;
         }
-        smr_log.push_back( req_op);
+        std::cout << "B" << &stub << std::endl;
+        std::cout << "C" << &stub << std::endl;
+        std::unique_lock<std::mutex> mlock(map_lock);
+        std::cout << "D" << req_lastIdx << last_index << std::endl;
+        bool temp = req_lastIdx <= last_index;
+        std::cout << temp << std::endl;
+        if(req_lastIdx < (int)smr_log.size()) {
+            smr_log[req_lastIdx] = req_op;
+        } else {
+            smr_log.push_back(req_op);
+        }
         last_index = req_lastIdx;
         std::cout << "smr_log[req_lastIdx] = "  << smr_log[last_index].opcode << ", " << smr_log[last_index].arg1 << ", " << smr_log[last_index].arg2 << std::endl;
+        int cusId = smr_log[req_comIdx].arg1;
+        int ordNum = smr_log[req_comIdx].arg2;
+        customer_record[cusId] = ordNum;
+        mlock.unlock();
+        committed_index = req_comIdx; // if committed was larger than req_comIdx, rollback to the same status of primary.
 
-        if(req_comIdx != -1 && committed_index != req_comIdx) {
-            std::unique_lock<std::mutex> mlock(map_lock);
-            while(committed_index < req_comIdx) {
-                committed_index++;
-                int cusId = smr_log[committed_index].arg1;
-                int ordNum = smr_log[committed_index].arg2;
-                customer_record[cusId] = ordNum;
-            }
-            mlock.unlock();
-        }
         response.SetStatus(1);
-        stub.SendReplicationResponse(response);
+        if(!stub.SendReplicationResponse(response)) {
+            primary_id = -1;
+            //stub.CloseSocket();
+            break;
+        }
     }
 }
 
@@ -164,20 +177,24 @@ CustomerRecord RobotFactory::GetCustomerRecord(int id) {
 }
 
 void RobotFactory::BecomePrimaryNode() {
-    if(primary_id != -1) {
-        //committe the xth record in the log and change committed_index to x.
-        MapOp xthOpLog = smr_log[++committed_index];
-        std::unique_lock<std::mutex> mlock(map_lock);
-        customer_record[xthOpLog.arg1] = xthOpLog.arg2;
-        mlock.unlock();
-    }
     primary_id = factory_id;
     for(ServerNode &node : peers) {
         std::cout << "current node is: " << &node << std::endl;
         node.stub = new ServerPFAStub();
         int a1 = node.stub->Init(node.ip, node.port);
-        int a2 = node.stub->SendIdentifyAsPFA(); //Send by PFAStub which use client socket
-        node.isActive = (a1 && a2);
+        int a2 = 0;
+        if(a1) {
+            a2 = node.stub->SendIdentifyAsPFA();
+        }
+        node.isActive = a1 && a2;
+    }
+    if(last_index != -1) {
+        SendReplicationRequests(); //replicate current status, make sure everyone is on the same page.
+        //make up for the lag with previous primary node
+        std::unique_lock<std::mutex> mlock(map_lock);
+        MapOp lastCommitedLog = smr_log[++committed_index];
+        customer_record[lastCommitedLog.arg1] = lastCommitedLog.arg2;
+        mlock.unlock();
     }
 }
 

@@ -55,4 +55,8 @@ int ServerStub::SendReplicationResponse(ReplicationResponse response) {
     return socket->Send(buffer, response.Size(),0);
 }
 
+void ServerStub::CloseSocket() {
+    socket->Close();
+}
+
 

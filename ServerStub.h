@@ -20,6 +20,7 @@ public:
 
     IdentificationMessage ReceiveIdentifyMessage();
     ReplicationRequest ReceiveReplicationRequest();
+    void CloseSocket();
 
 };
 
