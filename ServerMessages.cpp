@@ -45,7 +45,7 @@ void ReplicationRequest::SetRequest(int priId, int comIdx, int lastIdx, MapOp &o
     opcode = op.opcode;
     arg1 = op.arg1;
     arg2 = op.arg2;
-    std::cout << "mapOp in setRequest = "  << opcode << ", " << arg1 << ", " << arg2 << std::endl;
+    //std::cout << "mapOp in setRequest = "  << opcode << ", " << arg1 << ", " << arg2 << std::endl;
 }
 
 int ReplicationRequest::Size() {

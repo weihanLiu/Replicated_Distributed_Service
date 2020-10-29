@@ -1,7 +1,7 @@
 //
 // Created by Weihan on 10/26/2020.
 //
-
+#include <iostream>
 #include "ServerPFAStub.h"
 
 
@@ -20,7 +20,12 @@ int ServerPFAStub::SendIdentifyAsPFA() {
 }
 
 int ServerPFAStub::Init(std::string ip, int port) {
-    return socket.Init(ip, port);
+    int temp = socket.Init(ip, port);
+    if(temp == 0) {
+        socket.Close();
+    }
+    std::cout << " Inside sockect init: " << temp << std::endl;
+    return temp;
 }
 
 ReplicationResponse ServerPFAStub::SendReplicationRequest(ReplicationRequest &request) {
@@ -28,15 +33,16 @@ ReplicationResponse ServerPFAStub::SendReplicationRequest(ReplicationRequest &re
     char buffer[32];
     request.Marshal(buffer);
     int size = request.Size();
+    response.SetStatus(0);
     if(socket.Send(buffer, size,0) > 0) {
         size = response.Size();
         if(socket.Recv(buffer,size,0) > 0) {
             response.Unmarshal(buffer);
-        } else {
-            response.SetStatus(0);
         }
-    } else {
-        response.SetStatus(0);
     }
     return response;
+}
+
+void ServerPFAStub::Close() {
+    socket.Close();
 }

@@ -21,7 +21,6 @@ struct ServerNode {
     int port;
     ServerPFAStub* stub;
     bool isActive;
-    int lastReplicatedIndex;
 };
 
 struct AdminRequest {
@@ -50,7 +49,7 @@ private:
     void SendReplicationRequests();
     void processCustomerRequest(int eng_id, ServerStub &stub);
     void processReplicationRequest(ServerStub &stub);
-    void RecoveryNode(ServerNode &node);
+    void RecoverNode(ServerNode &node);
     void SendSingleReplicationReq(int priId, int comIdx, int lastIdx, MapOp &op, ServerNode &node);
 
 //	RobotInfo CreateSpecialRobot(RobotOrder order, int engineer_id);

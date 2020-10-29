@@ -40,16 +40,16 @@ ReplicationRequest ServerStub::ReceiveReplicationRequest() {
     char buffer[32];
     ReplicationRequest request;
     int temp = socket->Recv(buffer, request.Size(), 0);
-    std::cout << "socket received result: "  << temp << std::endl;
+    //std::cout << "socket received result: "  << temp << std::endl;
     if(temp) {
         request.Unmarshal(buffer);
-        std::cout << "Replication received: "  << std::endl;
+        //std::cout << "Replication received: "  << std::endl;
     }
     return request;
 }
 
 int ServerStub::SendReplicationResponse(ReplicationResponse response) {
-    response.Print();
+    //response.Print();
     char buffer[32];
     response.Marshal(buffer);
     return socket->Send(buffer, response.Size(),0);

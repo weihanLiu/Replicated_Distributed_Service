@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 		std::cout << "Socket initialization failed" << std::endl;
 		return 0;
 	}
-    std::cout << "Main Socket created." << std::endl;
+    //std::cout << "Main Socket created." << std::endl;
 
 	while ((new_socket = socket.Accept())) {
         std::cout << "New Socket accepted " << &new_socket << std::endl;

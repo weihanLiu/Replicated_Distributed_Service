@@ -33,15 +33,14 @@ RobotInfo RobotFactory::CreateRegularRobot(CustomerRequest order, int engineer_i
 }
 
 void RobotFactory::EngineerThread(std::unique_ptr<ServerSocket> socket, int id) {
-    std::cout << "inside engineer thread" << std::endl;
+    //std::cout << "inside engineer thread" << std::endl;
 	int engineer_id = id;
     ServerStub stub;
 	stub.Init(std::move(socket));
     IdentificationMessage identificationMessage = stub.ReceiveIdentifyMessage();
-    std::cout << "Request type is: " << identificationMessage.GetType() << std::endl; //correct
+    //std::cout << "Request type is: " << identificationMessage.GetType() << std::endl; //correct
     switch(identificationMessage.GetType()) {
         case 1:
-            std::cout << "first stub" << &stub << std::endl;
             processReplicationRequest(stub);
             break;
         case 2:
@@ -50,7 +49,7 @@ void RobotFactory::EngineerThread(std::unique_ptr<ServerSocket> socket, int id) 
         default:
             std::cout << "Undefined identification message tyep: " << identificationMessage.GetType() << std::endl;
     }
-    std::cout << "out of engineer thread "  << std::endl;
+    //std::cout << "out of engineer thread "  << std::endl;
 
 }
 
@@ -58,9 +57,8 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
     ReplicationRequest request;
     ReplicationResponse response;
     while(true) {
-        std::cout << "second stub" << &stub << std::endl;
         request = stub.ReceiveReplicationRequest();
-        request.Print();
+        //request.Print();
 
         if(!request.isValid()) {
             std::cout << "Invalid request: primary server is down "  << std::endl;
@@ -72,14 +70,11 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
         int req_comIdx = request.getCommittedIndex();
         int req_lastIdx = request.getLastIndex();
         MapOp req_op = request.getLastOp();
-        std::cout << "A" << &stub << std::endl;
         if(primary_id != req_priId) {
             primary_id = req_priId;
         }
-        std::cout << "B" << &stub << std::endl;
-        std::cout << "C" << &stub << std::endl;
+
         std::unique_lock<std::mutex> mlock(map_lock);
-        std::cout << "D" << req_lastIdx << last_index << std::endl;
         bool temp = req_lastIdx <= last_index;
         std::cout << temp << std::endl;
         // if this server is ahead of primary, rollback to the same status of primary.
@@ -89,7 +84,7 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
             smr_log.push_back(req_op);
         }
         last_index = req_lastIdx;
-        std::cout << "smr_log[req_lastIdx] = "  << smr_log[last_index].opcode << ", " << smr_log[last_index].arg1 << ", " << smr_log[last_index].arg2 << std::endl;
+        //std::cout << "smr_log[req_lastIdx] = "  << smr_log[last_index].opcode << ", " << smr_log[last_index].arg1 << ", " << smr_log[last_index].arg2 << std::endl;
         int cusId = smr_log[req_comIdx].arg1;
         int ordNum = smr_log[req_comIdx].arg2;
         customer_record[cusId] = ordNum;
@@ -150,11 +145,12 @@ void RobotFactory::AdminThread(int id) {
 
 		int cusId = adminReq->robot.GetCustomerId();
 		int ordNum = adminReq->robot.GetOrderNumber();
-		std::cout <<"cusID: " << cusId << " , ordNum: " << ordNum << std::endl;
+		//std::cout <<"cusID: " << cusId << " , ordNum: " << ordNum << std::endl;
 		//change smr_log
 		smr_log.push_back({1, cusId, ordNum});
 		last_index++;
-        std::cout << "last Log after smr pushBack: "  <<  smr_log[last_index].opcode << ", " << smr_log[last_index].arg1 << ", " << smr_log[last_index].arg2 << std::endl;
+		//std::cout << "before Replication req : last = " << last_index << "comIdx = " << committed_index << std::endl;
+        //std::cout << "last Log after smr pushBack: "  <<  smr_log[last_index].opcode << ", " << smr_log[last_index].arg1 << ", " << smr_log[last_index].arg2 << std::endl;
 		SendReplicationRequests();
 		std::unique_lock<std::mutex> mlock(map_lock);
 		//change customer_record
@@ -180,7 +176,6 @@ CustomerRecord RobotFactory::GetCustomerRecord(int id) {
 void RobotFactory::BecomePrimaryNode() {
     primary_id = factory_id;
     for(ServerNode &node : peers) {
-        std::cout << "current node is: " << &node << std::endl;
         node.stub = new ServerPFAStub();
         node.isActive = false;
         if(node.stub->Init(node.ip, node.port)) {
@@ -202,10 +197,11 @@ void RobotFactory::BecomePrimaryNode() {
 void RobotFactory::SendReplicationRequests() {
     for(ServerNode &node : peers) {
         if(!node.isActive) {
-            RecoveryNode(node);
+            RecoverNode(node);
+            std::cout << "recoveryResult: " << node.isActive << std::endl;
         }
         if(node.isActive) {
-            SendSingleReplicationReq(primary_id,committed_index,last_index, smr_log[last_index], node);
+            SendSingleReplicationReq(primary_id,committed_index,last_index,smr_log[last_index],node);
         }
     }
 }
@@ -214,28 +210,32 @@ void RobotFactory::SendSingleReplicationReq(int priId, int comIdx, int lastIdx, 
     ReplicationRequest request;
     ReplicationResponse response;
     request.SetRequest(priId, comIdx, lastIdx, op);
-    std::cout << " Request to be sent: " << std::endl;
-    request.Print();
+    //std::cout << " Request to be sent: " << std::endl;
+    //request.Print();
     response = node.stub->SendReplicationRequest(request);
     if(!response.GetStatus()) {
+        std::cout << " a node is down " << std::endl;
         node.isActive = false;
-    } else {
-        node.lastReplicatedIndex = lastIdx;
+        node.stub->Close();
     }
 }
 
-void RobotFactory::RecoveryNode(ServerNode &node) {
-    if(node.stub->Init(node.ip, node.port)) {
-        if(node.stub->SendIdentifyAsPFA()) {
-            node.isActive = true;
-        }
+void RobotFactory::RecoverNode(ServerNode &node) {
+    if(!node.stub->Init(node.ip, node.port)) {
+        return;
     }
-    while(node.lastReplicatedIndex != last_index) {
+    if(!node.stub->SendIdentifyAsPFA()) {
+        return;
+    }
+    node.isActive = true;
+    std::cout << " node is back, start recovery " << std::endl;
+    int temp = 0;
+    while(temp <= last_index) {
         if(!node.isActive) {
             return;
         }
-        int temp = node.lastReplicatedIndex + 1;
-        SendSingleReplicationReq(primary_id,temp - 1,temp,smr_log[temp], node);
+        SendSingleReplicationReq(primary_id,temp-1,temp,smr_log[temp], node);
+        temp++;
     }
 }
 

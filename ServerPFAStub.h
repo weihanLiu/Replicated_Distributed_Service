@@ -18,6 +18,7 @@ public:
     int Init(std::string ip, int port);
     int SendIdentifyAsPFA();
     ReplicationResponse SendReplicationRequest(ReplicationRequest &request);
+    void Close();
 };
 
 
