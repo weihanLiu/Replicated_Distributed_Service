@@ -29,6 +29,7 @@ int Socket::Send(char *buffer, int size, int flags) {
 	int offset = 0;
 	while (size > 0) {
 		bytes_written = send(fd_, buffer + offset, size, flags);
+        std::cout << "bytes_written: " << bytes_written << std::endl;
 		if (bytes_written < 0) {
 			/*
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {

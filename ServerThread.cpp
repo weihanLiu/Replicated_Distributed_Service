@@ -82,6 +82,7 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
         std::cout << "D" << req_lastIdx << last_index << std::endl;
         bool temp = req_lastIdx <= last_index;
         std::cout << temp << std::endl;
+        // if this server is ahead of primary, rollback to the same status of primary.
         if(req_lastIdx < (int)smr_log.size()) {
             smr_log[req_lastIdx] = req_op;
         } else {
@@ -93,7 +94,7 @@ void RobotFactory::processReplicationRequest(ServerStub &stub) {
         int ordNum = smr_log[req_comIdx].arg2;
         customer_record[cusId] = ordNum;
         mlock.unlock();
-        committed_index = req_comIdx; // if committed was larger than req_comIdx, rollback to the same status of primary.
+        committed_index = req_comIdx;
 
         response.SetStatus(1);
         if(!stub.SendReplicationResponse(response)) {
@@ -181,12 +182,12 @@ void RobotFactory::BecomePrimaryNode() {
     for(ServerNode &node : peers) {
         std::cout << "current node is: " << &node << std::endl;
         node.stub = new ServerPFAStub();
-        int a1 = node.stub->Init(node.ip, node.port);
-        int a2 = 0;
-        if(a1) {
-            a2 = node.stub->SendIdentifyAsPFA();
+        node.isActive = false;
+        if(node.stub->Init(node.ip, node.port)) {
+            if(node.stub->SendIdentifyAsPFA()) {
+                node.isActive = true;
+            }
         }
-        node.isActive = a1 && a2;
     }
     if(last_index != -1) {
         SendReplicationRequests(); //replicate current status, make sure everyone is on the same page.
@@ -200,17 +201,41 @@ void RobotFactory::BecomePrimaryNode() {
 
 void RobotFactory::SendReplicationRequests() {
     for(ServerNode &node : peers) {
-        if(node.isActive) {
-            ReplicationRequest request;
-            ReplicationResponse response;
-            request.SetRequest(primary_id,committed_index,last_index, smr_log[last_index]);
-            std::cout << " Request to be sent: " << std::endl;
-            request.Print();
-            response = node.stub->SendReplicationRequest(request);
-            if(!response.GetStatus()) {
-                node.isActive = false;
-            }
+        if(!node.isActive) {
+            RecoveryNode(node);
         }
+        if(node.isActive) {
+            SendSingleReplicationReq(primary_id,committed_index,last_index, smr_log[last_index], node);
+        }
+    }
+}
+
+void RobotFactory::SendSingleReplicationReq(int priId, int comIdx, int lastIdx, MapOp &op, ServerNode &node) {
+    ReplicationRequest request;
+    ReplicationResponse response;
+    request.SetRequest(priId, comIdx, lastIdx, op);
+    std::cout << " Request to be sent: " << std::endl;
+    request.Print();
+    response = node.stub->SendReplicationRequest(request);
+    if(!response.GetStatus()) {
+        node.isActive = false;
+    } else {
+        node.lastReplicatedIndex = lastIdx;
+    }
+}
+
+void RobotFactory::RecoveryNode(ServerNode &node) {
+    if(node.stub->Init(node.ip, node.port)) {
+        if(node.stub->SendIdentifyAsPFA()) {
+            node.isActive = true;
+        }
+    }
+    while(node.lastReplicatedIndex != last_index) {
+        if(!node.isActive) {
+            return;
+        }
+        int temp = node.lastReplicatedIndex + 1;
+        SendSingleReplicationReq(primary_id,temp - 1,temp,smr_log[temp], node);
     }
 }
 

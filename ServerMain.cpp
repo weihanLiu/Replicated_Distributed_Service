@@ -60,5 +60,6 @@ int main(int argc, char *argv[]) {
 				std::move(new_socket), engineer_cnt++);
 		thread_vector.push_back(std::move(engineer_thread));
 	}
+	socket.Close();
 	return 0;
 }
